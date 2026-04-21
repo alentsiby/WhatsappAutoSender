@@ -1,0 +1,20 @@
+# WhatsApp session data — contains login tokens, never commit this
+whatsapp_session/
+
+# Uploaded images — temporary files, cleared after each run
+temp_images/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual environment
+.venv/
+
+# Streamlit cache
+.streamlit/
+
+# OS files
+.DS_Store
+Thumbs.db
