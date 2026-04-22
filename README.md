@@ -44,7 +44,10 @@ Designed to mimic human behavior to reduce ban rates, this tool allows you to se
 1. Start the Streamlit application:
    ```bash
    streamlit run app.py
-   ```
+   or
+   python -m streamlit run app.py
+   ``` 
+   Use python -m streamlit run app.py if you get error "streamlit is not recognized as an internal or external command, operable program or batch file"  
 
 2. Access the Web UI provided in your terminal (usually `http://localhost:8501`).
 
