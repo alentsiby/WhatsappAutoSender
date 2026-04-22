@@ -6,12 +6,14 @@ Designed to mimic human behavior to reduce ban rates, this tool allows you to se
 
 ## 🚀 Features
 
-* **Anti-Ban Stealth Mode**: Uses `selenium-stealth` and removes `cdc_` variables to evade WhatsApp's bot detection tools.
-* **Human-like Behavior**: Types messages with human-like keystroke delays and randomizes wait times between messages.
-* **Image & Text Delivery**: Sends texts and images together reliably. Uses Windows Clipboard via PowerShell to paste images smoothly, bypassing dynamic and easily broken DOM interactions.
-* **Smart Contact Grouping**: If multiple names belong to the same phone number, it groups them in a single message (e.g., "Hello Ram & Shyam") to minimize message volume and avoid rate-limiting.
-* **Clean UI**: User-friendly Streamlit interface with live progress tracking, debug logs, and real-time status updates.
-* **Session Persistence**: Saves your WhatsApp login session so you don't need to scan the QR code every time.
+* **Anti-Ban Stealth Mode**: Uses `selenium-stealth` and dynamically removes Chrome DevTools Protocol (`cdc_`) variables to evade WhatsApp's sophisticated bot detection tools.
+* **Human-like Behavior**: Simulates real user interactions by typing character-by-character with randomized keystroke delays (30ms-120ms) and naturally varied wait times between messages.
+* **Image & Text Delivery**: Sends text and images together reliably. Bypasses fragile DOM interactions by using native Windows PowerShell capabilities to paste images directly via the clipboard.
+* **Smart Contact Grouping**: Automatically merges contacts with identical phone numbers (e.g., combining names into "Hello Ram & Shyam") to minimize message volume, prevent rate-limiting, and avoid spamming the same recipient.
+* **Intelligent Data Cleaning**: Automatically formats and sanitizes imported phone numbers (e.g., adding country codes appropriately) and cleans up names by stripping arbitrary numbers or special characters.
+* **Clean UI & Real-time Analytics**: Built with Streamlit, providing a premium, user-friendly interface with live progress tracking, debug logs, success/fail metrics, and downloadable result reports in CSV format.
+* **Session Persistence**: Securely saves your WhatsApp Web login session locally (`whatsapp_session`), meaning you only need to scan the QR code once across multiple app launches.
+* **No-Trace Privacy**: Ensures zero evidence is left on disk by automatically purging all temporarily uploaded images after the messaging campaign finishes.
 
 ## 🛠️ Requirements
 
