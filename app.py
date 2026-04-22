@@ -67,15 +67,6 @@ def save_uploaded_file(uploaded_file, directory):
     return file_path
 
 
-def cleanup_temp_images():
-    """Delete all uploaded images after a run — no evidence left on disk."""
-    import shutil
-    temp_dir = os.path.join(os.getcwd(), "temp_images")
-    if os.path.exists(temp_dir):
-        shutil.rmtree(temp_dir)
-        os.makedirs(temp_dir, exist_ok=True)  # Recreate empty folder
-
-
 def copy_image_to_clipboard(image_path: str) -> bool:
     """
     Copy an image file to the Windows clipboard using PowerShell.
@@ -96,12 +87,8 @@ def copy_image_to_clipboard(image_path: str) -> bool:
     return result.returncode == 0
 
 
-def safe_click(driver, element):
-    """Click using ActionChains (generates real browser events, not JS injection)."""
-    try:
-        ActionChains(driver).move_to_element(element).click().perform()
-    except Exception:
-        element.click()
+def js_click(driver, element):
+    driver.execute_script("arguments[0].click();", element)
 
 
 # ─────────────────────────────────────────────
@@ -145,18 +132,24 @@ window.navigator.permissions.query = (parameters) => (
 );
 """
 
-def init_selenium_driver():
+def init_selenium_driver(headless: bool):
     st.info("🚀 Starting Chrome browser...")
     opts = Options()
 
     user_data_dir = os.path.join(os.getcwd(), "whatsapp_session")
     opts.add_argument(f"--user-data-dir={user_data_dir}")
     opts.add_argument("--profile-directory=Default")
+    opts.add_argument("--no-sandbox")
+    opts.add_argument("--disable-dev-shm-usage")
+    opts.add_argument("--disable-gpu")
     opts.add_argument("--window-size=1400,900")
     opts.add_argument("--log-level=3")
     opts.add_experimental_option('excludeSwitches', ['enable-logging', 'enable-automation'])
     opts.add_experimental_option('useAutomationExtension', False)
     opts.add_argument('--disable-blink-features=AutomationControlled')
+
+    if headless:
+        opts.add_argument("--headless=new")
 
     service = Service(ChromeDriverManager().install())
     driver = webdriver.Chrome(service=service, options=opts)
@@ -179,6 +172,12 @@ def init_selenium_driver():
     st.info("🌐 Opening WhatsApp Web...")
     driver.get("https://web.whatsapp.com")
 
+    # ── Inject stealth JS immediately after page loads ───────────────────
+    try:
+        driver.execute_script(STEALTH_JS)
+    except Exception:
+        pass
+
     try:
         WebDriverWait(driver, 25).until(
             EC.presence_of_element_located(
@@ -187,11 +186,16 @@ def init_selenium_driver():
         )
         qr = driver.find_elements(By.XPATH, '//canvas[@aria-label="Scan me!"]')
         if qr:
-            st.warning("📷 Scan the QR code in the browser. Waiting up to 120 seconds...")
-            WebDriverWait(driver, 120).until(
-                EC.presence_of_element_located((By.XPATH, '//div[@id="pane-side"]'))
-            )
-            st.success("✅ Logged in successfully!")
+            if headless:
+                st.error("❌ Not logged in! Uncheck 'Headless Mode' and restart to scan QR code.")
+                driver.quit()
+                return None
+            else:
+                st.warning("📷 Scan the QR code in the browser. Waiting up to 120 seconds...")
+                WebDriverWait(driver, 120).until(
+                    EC.presence_of_element_located((By.XPATH, '//div[@id="pane-side"]'))
+                )
+                st.success("✅ Logged in successfully!")
         else:
             st.success("✅ Already logged in!")
     except Exception:
@@ -245,7 +249,7 @@ def type_message(driver, element, message: str):
     # Try a few times to click in case of overlay/animation intercept
     for _ in range(5):
         try:
-            safe_click(driver, element)
+            element.click()
             break
         except Exception:
             time.sleep(0.4)
@@ -295,7 +299,7 @@ def send_message_selenium(driver, phone: str, message: str,
                 step("⚠️ Clipboard copy failed — skipping image.")
             else:
                 # Click on the chat input area and paste the image
-                safe_click(driver, msg_box)
+                msg_box.click()
                 time.sleep(random.uniform(0.5, 1.2))
                 ActionChains(driver).key_down(Keys.CONTROL).send_keys('v').key_up(Keys.CONTROL).perform()
                 step("📤 Pasted image. Waiting for preview...")
@@ -374,7 +378,7 @@ def send_message_selenium(driver, phone: str, message: str,
                                 elements = driver.find_elements(By.XPATH, sp_xpath)
                                 clickable = [e for e in elements if e.is_displayed() and e.is_enabled()]
                                 if clickable:
-                                    safe_click(driver, clickable[-1])
+                                    js_click(driver, clickable[-1])
                                     sent_img = True
                                     step("✅ Image sent from preview.")
                                     break
@@ -431,12 +435,16 @@ def main():
 
     st.title("📱 WhatsApp Bulk Message Sender")
     st.markdown("Send personalised messages with optional images — smoothly and silently.")
-    
-    st.warning("**Anti-Ban Tip:** If you were recently banned, your WiFi/Network IP address might be flagged. Connect to a **Mobile Hotspot** to get a fresh IP before running your next batch.", icon="⚠️")
 
     with st.sidebar:
         st.header("⚙️ Configuration")
 
+        headless_mode = st.checkbox(
+            "Run in Headless Mode (Invisible)",
+            value=False,
+            help="Keep UNCHECKED on first run so you can scan the WhatsApp QR code."
+        )
+        
         group_contacts = st.checkbox(
             "Merge Same Numbers",
             value=True,
@@ -542,7 +550,7 @@ def main():
         if total_messages > 0 and len(invalid_df) > 0:
             progress_bar.progress(current_progress / total_messages)
 
-        driver = init_selenium_driver()
+        driver = init_selenium_driver(headless=headless_mode)
         if not driver:
             return
 
@@ -595,7 +603,6 @@ def main():
         finally:
             driver.quit()
             st.info("🔒 Browser closed.")
-            cleanup_temp_images()  # Auto-wipe uploaded images from disk
 
         st.success("✅ All done!")
         results_df = pd.DataFrame(results, columns=["Name", "Status"])
